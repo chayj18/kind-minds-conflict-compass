@@ -13,9 +13,6 @@ export const SOLUTIONS: Solution[] = [
   { id: "alternative", emoji: "💡", name: "다른 방법 찾기", desc: "둘 다 원하는 것을 얻을 새로운 방법을 생각해요." },
   { id: "help", emoji: "🧑‍🏫", name: "어른께 도움 요청하기", desc: "스스로 해결이 어려우면 선생님이나 부모님께 도움을 구해요." },
   { id: "rps", emoji: "✊", name: "가위바위보로 정하기", desc: "공평한 방법으로 빠르게 정해요." },
-  { id: "ignore", emoji: "🙈", name: "못 본 척 무시하기", desc: "아무 말 없이 상대를 모른 척해요." },
-  { id: "yell", emoji: "😡", name: "화내며 큰소리치기", desc: "참지 않고 크게 소리를 질러요." },
-  { id: "mine", emoji: "🏃", name: "내가 먼저 차지하기", desc: "내가 원하는 대로 먼저 가져가요." },
 ];
 
 export type Situation = {
