@@ -450,7 +450,7 @@ function Summary({ nickname, records, onRestart }: { nickname: string; records: 
       <Card>
         <h3 className="mb-3 text-xl text-secondary-foreground">🧰 갈등 해결 방법 도감</h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {SOLUTIONS.filter((s) => !["ignore", "yell", "mine"].includes(s.id)).map((s) => (
+          {SOLUTIONS.map((s) => (
             <div key={s.id} className="rounded-2xl bg-secondary p-3">
               <p className="font-display">{s.emoji} {s.name}</p>
               <p className="text-xs text-muted-foreground">{s.desc}</p>
