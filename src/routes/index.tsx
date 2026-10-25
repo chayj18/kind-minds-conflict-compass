@@ -383,7 +383,7 @@ function Round({ situation, round, onDone }: { situation: Situation; round: numb
           <h3 className="text-lg text-secondary-foreground">4단계 · 최종 해결 방안 선택 🏆</h3>
           <p className="text-sm text-muted-foreground">평가 점수를 참고해서 이 상황에 가장 알맞은 방법을 골라주세요.</p>
           <div className="space-y-2">
-            {[...picked].sort((a, b) => totals[b] - totals[a]).map((id) => {
+            {[...picked].sort((a, b) => (totals[b] ?? 0) - (totals[a] ?? 0)).map((id) => {
               const s = solutionById(id);
               const on = finalId === id;
               return (
