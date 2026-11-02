@@ -1,0 +1,2 @@
+- [ ] Add simple-input and scenario-aware checks to steps 1–2 with supportive feedback.
+- [ ] Keep regression tests against Round and verify corrected answers advance in the actual activity.
