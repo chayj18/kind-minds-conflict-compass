@@ -1,11 +1,12 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, type ModelMessage } from "ai";
+import { Output, streamText, type ModelMessage } from "ai";
+import { answerResultSchema } from "../answer-validation";
 
 import {
   createLovableAiGatewayRunIdFetch,
   getLovableAiGatewayRunId,
   withLovableAiGatewayRunIdHeader,
-} from "../../ai-apps-gateway-sdk/examples/run-id.ts";
+} from "./run-id.server.ts";
 
 export function createResponsesCall(
   request: Request,
@@ -26,6 +27,8 @@ export function createResponsesCall(
     // AI SDK 6 lacks `instructions`: rename this key to `system` there.
     ...(instructions ? { instructions } : {}),
     messages,
+    output: Output.object({ schema: answerResultSchema }),
+    maxRetries: 0,
     abortSignal: request.signal,
     providerOptions: {
       openai: {
@@ -33,7 +36,7 @@ export function createResponsesCall(
         ...(reasoning
           ? {
               forceReasoning: true,
-              reasoningEffort: "medium",
+              reasoningEffort: "low",
               reasoningSummary: "auto",
               include: ["reasoning.encrypted_content"],
             }
