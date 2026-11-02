@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import {
   SITUATIONS,
   SOLUTIONS,
@@ -127,9 +128,9 @@ function PrimaryButton({ children, disabled, onClick, variant = "primary" }: { c
     ? "bg-primary text-primary-foreground shadow-pop"
     : "border-2 border-border bg-card text-secondary-foreground";
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className={`${base} ${v}`}>
+    <Button type="button" disabled={disabled} onClick={onClick} className={`h-auto whitespace-normal ${base} ${v}`}>
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -198,7 +199,7 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-function TextArea({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+function TextArea({ label, value, onChange, placeholder, error }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; error?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1 block font-display">{label}</span>
@@ -207,6 +208,7 @@ function TextArea({ label, value, onChange, placeholder }: { label: string; valu
         onChange={(e) => onChange(e.target.value)}
         rows={2}
         placeholder={placeholder}
+        aria-invalid={error || undefined}
         className="w-full rounded-2xl border-2 border-input bg-background px-4 py-3 outline-none focus:border-ring"
       />
     </label>
@@ -215,7 +217,7 @@ function TextArea({ label, value, onChange, placeholder }: { label: string; valu
 
 const FEELINGS = ["속상해요", "억울해요", "화나요", "서운해요", "답답해요", "부끄러워요", "미안해요", "당황스러워요"];
 
-function Round({ situation, round, onDone }: { situation: Situation; round: number; score: number; onDone: (r: RoundRecord) => void }) {
+export function Round({ situation, round, onDone }: { situation: Situation; round: number; score: number; onDone: (r: RoundRecord) => void }) {
   const [step, setStep] = useState(1);
   const [myFeeling, setMyFeeling] = useState("");
   const [otherFeeling, setOtherFeeling] = useState("");
@@ -225,6 +227,9 @@ function Round({ situation, round, onDone }: { situation: Situation; round: numb
   const [scores, setScores] = useState<Record<string, number[]>>({});
   const [finalId, setFinalId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [attemptedStep, setAttemptedStep] = useState<number | null>(null);
+  const missingFeelings = !myFeeling.trim() || !otherFeeling.trim();
+  const missingNeeds = !myNeed.trim() || !otherNeed.trim();
 
   const togglePick = (id: string) => {
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < 3 ? [...p, id] : p));
@@ -238,7 +243,14 @@ function Round({ situation, round, onDone }: { situation: Situation; round: numb
   const allScored = picked.length === 3 && picked.every((id) => (scores[id] ?? [0, 0, 0]).every((v) => v > 0));
   const totals = useMemo(() => Object.fromEntries(picked.map((id) => [id, (scores[id] ?? [0, 0, 0]).reduce((a, b) => a + b, 0)])), [picked, scores]);
 
-  const go = (n: number) => { setStep(n); setFeedback(null); window.scrollTo(0, 0); };
+  const go = (n: number) => {
+    if (n === step + 1 && ((step === 1 && missingFeelings) || (step === 2 && missingNeeds))) {
+      setAttemptedStep(step);
+      return;
+    }
+    setAttemptedStep(null);
+    setStep(n); setFeedback(null); window.scrollTo(0, 0);
+  };
 
   const submitFinal = () => {
     if (!finalId) return;
@@ -256,14 +268,15 @@ function Round({ situation, round, onDone }: { situation: Situation; round: numb
   };
 
   const confirmNext = () => {
+    if (!finalId) return;
     onDone({
       situationId: situation.id,
       situationTitle: situation.title,
       situationText: situation.text,
       myFeeling, otherFeeling, myNeed, otherNeed,
       candidates: picked.map((id) => ({ id, name: solutionById(id).name, scores: scores[id] ?? [0, 0, 0] })),
-      finalId: finalId!,
-      finalName: solutionById(finalId!).name,
+      finalId,
+      finalName: solutionById(finalId).name,
     });
   };
 
@@ -280,15 +293,17 @@ function Round({ situation, round, onDone }: { situation: Situation; round: numb
       {step === 1 && (
         <Card className="space-y-4">
           <h3 className="text-lg text-secondary-foreground">1단계 · 감정 살피기 💗</h3>
+          <p className="text-sm text-muted-foreground">감정 단어가 생각나지 않으면 아래를 보고 적어도 좋아요.</p>
           <div className="flex flex-wrap gap-2">
             {FEELINGS.map((f) => (
               <span key={f} className="rounded-full bg-muted px-3 py-1 text-sm">{f}</span>
             ))}
           </div>
-          <TextArea label="나의 감정" value={myFeeling} onChange={setMyFeeling} placeholder="나는 지금 어떤 기분일까요?" />
-          <TextArea label={`${situation.other}의 감정`} value={otherFeeling} onChange={setOtherFeeling} placeholder={`${situation.other}은(는) 어떤 기분일까요?`} />
+          <TextArea label="나의 감정" value={myFeeling} onChange={setMyFeeling} placeholder="나는 지금 어떤 기분일까요?" error={attemptedStep === 1 && !myFeeling.trim()} />
+          <TextArea label={`${situation.other}의 감정`} value={otherFeeling} onChange={setOtherFeeling} placeholder={`${situation.other}은(는) 어떤 기분일까요?`} error={attemptedStep === 1 && !otherFeeling.trim()} />
+          {attemptedStep === 1 && missingFeelings && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {situation.other}의 감정을 모두 적어주세요.</p>}
           <div className="flex justify-end">
-            <PrimaryButton disabled={!myFeeling.trim() || !otherFeeling.trim()} onClick={() => go(2)}>다음 →</PrimaryButton>
+            <PrimaryButton onClick={() => go(2)}>다음 →</PrimaryButton>
           </div>
         </Card>
       )}
@@ -297,11 +312,12 @@ function Round({ situation, round, onDone }: { situation: Situation; round: numb
         <Card className="space-y-4">
           <h3 className="text-lg text-secondary-foreground">2단계 · 원하는 것(욕구) 찾기 🎯</h3>
           <p className="text-sm text-muted-foreground">감정 뒤에는 "이렇게 되었으면 좋겠다"는 마음이 숨어 있어요.</p>
-          <TextArea label="내가 원하는 것" value={myNeed} onChange={setMyNeed} placeholder="나는 ~하고 싶어요" />
-          <TextArea label={`${situation.other}이(가) 원하는 것`} value={otherNeed} onChange={setOtherNeed} placeholder={`${situation.other}은(는) ~하고 싶을 거예요`} />
+          <TextArea label="내가 원하는 것" value={myNeed} onChange={setMyNeed} placeholder="나는 ~하고 싶어요" error={attemptedStep === 2 && !myNeed.trim()} />
+          <TextArea label={`${situation.other}이(가) 원하는 것`} value={otherNeed} onChange={setOtherNeed} placeholder={`${situation.other}은(는) ~하고 싶을 거예요`} error={attemptedStep === 2 && !otherNeed.trim()} />
+          {attemptedStep === 2 && missingNeeds && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {situation.other}이(가) 원하는 것을 모두 적어주세요.</p>}
           <div className="flex justify-between">
             <PrimaryButton variant="ghost" onClick={() => go(1)}>← 이전</PrimaryButton>
-            <PrimaryButton disabled={!myNeed.trim() || !otherNeed.trim()} onClick={() => go(3)}>다음 →</PrimaryButton>
+            <PrimaryButton onClick={() => go(3)}>다음 →</PrimaryButton>
           </div>
         </Card>
       )}
@@ -309,6 +325,21 @@ function Round({ situation, round, onDone }: { situation: Situation; round: numb
       {step === 3 && (
         <Card className="space-y-4">
           <h3 className="text-lg text-secondary-foreground">3단계 · 해결 방안 후보 3가지 고르고 평가하기 ⚗️</h3>
+          <section aria-label="내가 적은 감정과 욕구" className="border-y border-border py-3">
+            <h4 className="mb-3 font-display">나와 {situation.other}의 마음</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-1 break-words">
+                <p className="font-display text-secondary-foreground">나</p>
+                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">감정: </span>{myFeeling}</p>
+                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">원하는 것: </span>{myNeed}</p>
+              </div>
+              <div className="min-w-0 space-y-1 break-words">
+                <p className="font-display text-secondary-foreground">{situation.other}</p>
+                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">감정: </span>{otherFeeling}</p>
+                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">원하는 것: </span>{otherNeed}</p>
+              </div>
+            </div>
+          </section>
           <p className="text-sm text-muted-foreground">해결 방안 도감에서 후보 3가지를 골라주세요. ({picked.length}/3)</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SOLUTIONS.map((s) => {
