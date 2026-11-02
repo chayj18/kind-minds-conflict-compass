@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { validateAnswers } from "@/lib/answer-validation.functions";
+import { simpleAnswerHelp, type AnswerResult } from "@/lib/answer-validation";
 import {
   SITUATIONS,
   SOLUTIONS,
@@ -199,7 +201,7 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-function TextArea({ label, value, onChange, placeholder, error }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; error?: boolean }) {
+function TextArea({ label, value, onChange, placeholder, error, disabled }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; error?: boolean; disabled?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1 block font-display">{label}</span>
@@ -207,6 +209,8 @@ function TextArea({ label, value, onChange, placeholder, error }: { label: strin
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={2}
+        maxLength={500}
+        disabled={disabled}
         placeholder={placeholder}
         aria-invalid={error || undefined}
         className="w-full rounded-2xl border-2 border-input bg-background px-4 py-3 outline-none focus:border-ring"
@@ -236,6 +240,9 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
   const [finalId, setFinalId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
   const [attemptedStep, setAttemptedStep] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [answerHelp, setAnswerHelp] = useState<AnswerResult | null>(null);
+  const [checkError, setCheckError] = useState("");
   const missingFeelings = !myFeeling.trim() || !otherFeeling.trim();
   const missingNeeds = !myNeed.trim() || !otherNeed.trim();
 
@@ -251,12 +258,32 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
   const allScored = picked.length === 3 && picked.every((id) => (scores[id] ?? [0, 0, 0]).every((v) => v > 0));
   const totals = useMemo(() => Object.fromEntries(picked.map((id) => [id, (scores[id] ?? [0, 0, 0]).reduce((a, b) => a + b, 0)])), [picked, scores]);
 
-  const go = (n: number) => {
+  const go = async (n: number) => {
+    if (checking) return;
     if (n === step + 1 && ((step === 1 && missingFeelings) || (step === 2 && missingNeeds))) {
+      setAnswerHelp(null); setCheckError("");
       setAttemptedStep(step);
       return;
     }
+    if (n === step + 1 && (step === 1 || step === 2)) {
+      const mine = step === 1 ? myFeeling : myNeed;
+      const other = step === 1 ? otherFeeling : otherNeed;
+      setAttemptedStep(step); setCheckError("");
+      const basic = { mineHelp: simpleAnswerHelp(mine, step), otherHelp: simpleAnswerHelp(other, step) };
+      if (basic.mineHelp || basic.otherHelp) { setAnswerHelp(basic); return; }
+      setChecking(true);
+      try {
+        const result = await validateAnswers({ data: { situationId: situation.id, step, mine, other } });
+        if (result.unavailable) { setCheckError(result.unavailable); return; }
+        setAnswerHelp(result);
+        if (result.mineHelp || result.otherHelp) return;
+      } catch {
+        setCheckError("답변을 확인하지 못했어요. 적은 내용은 그대로 있으니 잠시 뒤 다시 눌러주세요.");
+        return;
+      } finally { setChecking(false); }
+    }
     setAttemptedStep(null);
+    setAnswerHelp(null); setCheckError("");
     setStep(n); setFeedback(null); window.scrollTo(0, 0);
   };
 
@@ -307,11 +334,12 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
               <span key={f} className="rounded-full bg-muted px-3 py-1 text-sm">{f}</span>
             ))}
           </div>
-          <TextArea label="나의 감정" value={myFeeling} onChange={setMyFeeling} placeholder="나는 지금 어떤 기분일까요?" error={attemptedStep === 1 && !myFeeling.trim()} />
-          <TextArea label={`${situation.other}의 감정`} value={otherFeeling} onChange={setOtherFeeling} placeholder={`${eunneun(situation.other)} 어떤 기분일까요?`} error={attemptedStep === 1 && !otherFeeling.trim()} />
+          <TextArea label="나의 감정" value={myFeeling} onChange={setMyFeeling} placeholder="나는 지금 어떤 기분일까요?" disabled={checking} error={attemptedStep === 1 && (!myFeeling.trim() || !!answerHelp?.mineHelp)} />
+          <TextArea label={`${situation.other}의 감정`} value={otherFeeling} onChange={setOtherFeeling} placeholder={`${eunneun(situation.other)} 어떤 기분일까요?`} disabled={checking} error={attemptedStep === 1 && (!otherFeeling.trim() || !!answerHelp?.otherHelp)} />
           {attemptedStep === 1 && missingFeelings && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {situation.other}의 감정을 모두 적어주세요.</p>}
+          <AnswerHelp help={answerHelp} error={checkError} otherLabel={`${situation.other}의 감정`} myLabel="나의 감정" />
           <div className="flex justify-end">
-            <PrimaryButton onClick={() => go(2)}>다음 →</PrimaryButton>
+            <PrimaryButton disabled={checking} onClick={() => go(2)}>{checking ? "마음을 살펴보는 중…" : "다음 →"}</PrimaryButton>
           </div>
         </Card>
       )}
@@ -320,13 +348,14 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
         <Card className="space-y-4">
           <h3 className="text-lg text-secondary-foreground">2단계 · 원했던 것(욕구) 찾기 🎯</h3>
           <p className="text-sm text-muted-foreground">감정 뒤에는 "이렇게 되었으면 좋겠다"는 마음이 숨어 있어요. 이미 일어난 일이니, 그때 무엇을 원했는지 떠올려 보세요.</p>
-          <TextArea label="내가 원했던 것" value={myNeed} onChange={setMyNeed} placeholder="나는 ~하고 싶었어요" error={attemptedStep === 2 && !myNeed.trim()} />
-          <TextArea label={`${iga(situation.other)} 원했던 것`} value={otherNeed} onChange={setOtherNeed} placeholder={`${eunneun(situation.other)} ~하고 싶었을 거예요`} error={attemptedStep === 2 && !otherNeed.trim()} />
+          <TextArea label="내가 원했던 것" value={myNeed} onChange={setMyNeed} placeholder="나는 ~하고 싶었어요" disabled={checking} error={attemptedStep === 2 && (!myNeed.trim() || !!answerHelp?.mineHelp)} />
+          <TextArea label={`${iga(situation.other)} 원했던 것`} value={otherNeed} onChange={setOtherNeed} placeholder={`${eunneun(situation.other)} ~하고 싶었을 거예요`} disabled={checking} error={attemptedStep === 2 && (!otherNeed.trim() || !!answerHelp?.otherHelp)} />
           <p className="rounded-2xl bg-muted p-3 text-sm text-muted-foreground">💭 {eunneun(situation.other)} 왜 그렇게 행동했을까요? {situation.other}의 속마음을 추측해보아요.</p>
           {attemptedStep === 2 && missingNeeds && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {iga(situation.other)} 원했던 것을 모두 적어주세요.</p>}
+          <AnswerHelp help={answerHelp} error={checkError} otherLabel={`${iga(situation.other)} 원했던 것`} myLabel="내가 원했던 것" />
           <div className="flex justify-between">
-            <PrimaryButton variant="ghost" onClick={() => go(1)}>← 이전</PrimaryButton>
-            <PrimaryButton onClick={() => go(3)}>다음 →</PrimaryButton>
+            <PrimaryButton disabled={checking} variant="ghost" onClick={() => go(1)}>← 이전</PrimaryButton>
+            <PrimaryButton disabled={checking} onClick={() => go(3)}>{checking ? "마음을 살펴보는 중…" : "다음 →"}</PrimaryButton>
           </div>
         </Card>
       )}
@@ -463,6 +492,15 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
       )}
     </div>
   );
+}
+
+function AnswerHelp({ help, error, myLabel, otherLabel }: { help: AnswerResult | null; error: string; myLabel: string; otherLabel: string }) {
+  if (error) return <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm break-words">{error}</p>;
+  if (!help?.mineHelp && !help?.otherHelp) return null;
+  return <div role="alert" className="space-y-2 rounded-2xl bg-warning-soft p-3 text-sm">
+    {help.mineHelp && <p><b>{myLabel}: </b>{help.mineHelp}</p>}
+    {help.otherHelp && <p><b>{otherLabel}: </b>{help.otherHelp}</p>}
+  </div>;
 }
 
 function Summary({ nickname, records, onRestart }: { nickname: string; records: RoundRecord[]; onRestart: () => void }) {
