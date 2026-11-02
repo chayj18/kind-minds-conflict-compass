@@ -310,11 +310,12 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
 
       {step === 2 && (
         <Card className="space-y-4">
-          <h3 className="text-lg text-secondary-foreground">2단계 · 원하는 것(욕구) 찾기 🎯</h3>
-          <p className="text-sm text-muted-foreground">감정 뒤에는 "이렇게 되었으면 좋겠다"는 마음이 숨어 있어요.</p>
-          <TextArea label="내가 원하는 것" value={myNeed} onChange={setMyNeed} placeholder="나는 ~하고 싶어요" error={attemptedStep === 2 && !myNeed.trim()} />
-          <TextArea label={`${situation.other}이(가) 원하는 것`} value={otherNeed} onChange={setOtherNeed} placeholder={`${situation.other}은(는) ~하고 싶을 거예요`} error={attemptedStep === 2 && !otherNeed.trim()} />
-          {attemptedStep === 2 && missingNeeds && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {situation.other}이(가) 원하는 것을 모두 적어주세요.</p>}
+          <h3 className="text-lg text-secondary-foreground">2단계 · 원했던 것(욕구) 찾기 🎯</h3>
+          <p className="text-sm text-muted-foreground">감정 뒤에는 "이렇게 되었으면 좋겠다"는 마음이 숨어 있어요. 이미 일어난 일이니, 그때 무엇을 원했는지 떠올려 보세요.</p>
+          <TextArea label="내가 원했던 것" value={myNeed} onChange={setMyNeed} placeholder="나는 ~하고 싶었어요" error={attemptedStep === 2 && !myNeed.trim()} />
+          <TextArea label={`${situation.other}가 원했던 것`} value={otherNeed} onChange={setOtherNeed} placeholder={`${situation.other}는 ~하고 싶었을 거예요`} error={attemptedStep === 2 && !otherNeed.trim()} />
+          <p className="rounded-2xl bg-muted p-3 text-sm text-muted-foreground">💭 {situation.other}는 왜 그렇게 행동했을까요? {situation.other}의 속마음을 추측해보아요.</p>
+          {attemptedStep === 2 && missingNeeds && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {situation.other}가 원했던 것을 모두 적어주세요.</p>}
           <div className="flex justify-between">
             <PrimaryButton variant="ghost" onClick={() => go(1)}>← 이전</PrimaryButton>
             <PrimaryButton onClick={() => go(3)}>다음 →</PrimaryButton>
@@ -331,12 +332,12 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
               <div className="min-w-0 space-y-1 break-words">
                 <p className="font-display text-secondary-foreground">나</p>
                 <p className="whitespace-pre-wrap"><span className="text-muted-foreground">감정: </span>{myFeeling}</p>
-                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">원하는 것: </span>{myNeed}</p>
+                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">원했던 것: </span>{myNeed}</p>
               </div>
               <div className="min-w-0 space-y-1 break-words">
                 <p className="font-display text-secondary-foreground">{situation.other}</p>
                 <p className="whitespace-pre-wrap"><span className="text-muted-foreground">감정: </span>{otherFeeling}</p>
-                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">원하는 것: </span>{otherNeed}</p>
+                <p className="whitespace-pre-wrap"><span className="text-muted-foreground">원했던 것: </span>{otherNeed}</p>
               </div>
             </div>
           </section>
