@@ -22,7 +22,7 @@ describe("round input rules", () => {
       fill(values); next();
       expect(screen.getByRole("alert")).toBeVisible();
       expect(screen.getAllByRole("textbox").map((input) => input.getAttribute("aria-invalid"))).toContain("true");
-      expect(screen.queryByLabelText("내가 원하는 것")).toBeNull();
+      expect(screen.queryByLabelText("내가 원했던 것")).toBeNull();
     }
   });
   it("keeps step 2 open and alerts for either blank or whitespace-only need", () => {
@@ -30,7 +30,7 @@ describe("round input rules", () => {
     for (const values of [["", "쉬고 싶어요"], ["놀고 싶어요", "   "]]) {
       fill(values); next();
       expect(screen.getByRole("alert")).toBeVisible();
-      expect(screen.getByLabelText("내가 원하는 것")).toBeVisible();
+      expect(screen.getByLabelText("내가 원했던 것")).toBeVisible();
       expect(screen.queryByRole("region", { name: "내가 적은 감정과 욕구" })).toBeNull();
     }
   });
