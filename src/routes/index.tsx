@@ -308,7 +308,7 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
             ))}
           </div>
           <TextArea label="나의 감정" value={myFeeling} onChange={setMyFeeling} placeholder="나는 지금 어떤 기분일까요?" error={attemptedStep === 1 && !myFeeling.trim()} />
-          <TextArea label={`${situation.other}의 감정`} value={otherFeeling} onChange={setOtherFeeling} placeholder={`${situation.other}은(는) 어떤 기분일까요?`} error={attemptedStep === 1 && !otherFeeling.trim()} />
+          <TextArea label={`${situation.other}의 감정`} value={otherFeeling} onChange={setOtherFeeling} placeholder={`${eunneun(situation.other)} 어떤 기분일까요?`} error={attemptedStep === 1 && !otherFeeling.trim()} />
           {attemptedStep === 1 && missingFeelings && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {situation.other}의 감정을 모두 적어주세요.</p>}
           <div className="flex justify-end">
             <PrimaryButton onClick={() => go(2)}>다음 →</PrimaryButton>
