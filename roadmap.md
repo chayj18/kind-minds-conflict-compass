@@ -1,2 +1,3 @@
-- [ ] Add simple-input and scenario-aware checks to steps 1–2 with supportive feedback.
-- [ ] Keep regression tests against Round and verify corrected answers advance in the actual activity.
+- [x] Add spoken dialogue hints for every method in each situation at step 3.
+- [x] Apply the requested non-answer feedback and strengthen contextual emotion checks.
+- [x] Run regression tests and verify hints and validation in the activity.

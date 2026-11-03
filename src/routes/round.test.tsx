@@ -89,4 +89,34 @@ describe("round input rules", () => {
     expect(screen.queryByLabelText("내가 원했던 것")).toBeNull();
     expect(screen.getByRole("button", { name: "다음 →" })).toBeEnabled();
   });
+  it.each(["행복하다", "기쁘다"])("holds contextually unsuitable emotion %s and allows a corrected answer", async (answer) => {
+    vi.mocked(validateAnswers).mockResolvedValueOnce({ mineHelp: "엄마가 화를 냈을 때 어떤 마음이 들었을까요?", otherHelp: "" });
+    setup(); fill([answer, "걱정돼요"]); next();
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("나의 감정")).toHaveValue(answer);
+    expect(screen.queryByLabelText("내가 원했던 것")).toBeNull();
+    expect(validateAnswers).toHaveBeenCalledWith({ data: { situationId: "phone", step: 1, mine: answer, other: "걱정돼요" } });
+    fill(["엄마가 화내서 억울해요", "걱정돼요"]); next();
+    expect(await screen.findByLabelText("내가 원했던 것")).toBeVisible();
+  });
+  it("holds an unsuitable other-person emotion independently", async () => {
+    vi.mocked(validateAnswers).mockResolvedValueOnce({ mineHelp: "", otherHelp: "엄마는 왜 화를 내셨을까요?" });
+    setup(); fill(["억울해요", "기쁘다"]); next();
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("엄마의 감정")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("나의 감정")).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByLabelText("내가 원했던 것")).toBeNull();
+  });
+  it("accepts a contextual mixed feeling without a local positive-emotion ban", async () => {
+    setup(); fill(["게임할 때는 기뻤지만 엄마가 화내서 억울했어요", "걱정돼요"]); next();
+    expect(await screen.findByLabelText("내가 원했던 것")).toBeVisible();
+  });
+  it("holds feelings-only answers in the needs step", async () => {
+    setup(); fill(["억울해요", "걱정돼요"]); next();
+    await screen.findByLabelText("내가 원했던 것");
+    vi.mocked(validateAnswers).mockResolvedValueOnce({ mineHelp: "그때 무엇을 바랐나요?", otherHelp: "" });
+    fill(["행복하다", "공부를 마치길 바라요"]); next();
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("region", { name: "내가 적은 감정과 욕구" })).toBeNull();
+  });
 });

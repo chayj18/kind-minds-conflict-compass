@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { validateAnswers } from "@/lib/answer-validation.functions";
 import { simpleAnswerHelp, type AnswerResult } from "@/lib/answer-validation";
+import { SOLUTION_HINTS } from "@/lib/solution-hints";
 import {
   SITUATIONS,
   SOLUTIONS,
@@ -383,15 +384,21 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
             {SOLUTIONS.map((s) => {
               const on = picked.includes(s.id);
               return (
-                <button
+                <Button
                   key={s.id}
                   type="button"
+                  variant="outline"
+                  aria-pressed={on}
                   onClick={() => togglePick(s.id)}
-                  className={`rounded-2xl border-2 p-3 text-left transition ${on ? "border-primary bg-secondary" : "border-border bg-background"}`}
+                  className={`h-full min-w-0 flex-col items-stretch justify-start gap-1 whitespace-normal rounded-2xl border-2 p-3 text-left text-foreground transition hover:text-foreground ${on ? "border-primary bg-secondary hover:bg-secondary" : "border-border bg-background hover:bg-muted"}`}
                 >
                   <div className="font-display">{s.emoji} {s.name} {on && "✔"}</div>
                   <div className="font-sans text-xs text-muted-foreground">{s.desc}</div>
-                </button>
+                  <p className="mt-2 border-t border-border pt-2 font-sans text-sm leading-relaxed break-words">
+                    <span className="text-muted-foreground">💬 내가 하게 될 말: </span>
+                    “{SOLUTION_HINTS[situation.id]?.[s.id]}”
+                  </p>
+                </Button>
               );
             })}
           </div>
