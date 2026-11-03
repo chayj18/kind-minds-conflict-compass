@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { getTeacherResults } from "@/lib/teacher.functions";
 import type { RoundRecord } from "@/lib/conflict-data";
 
 export const Route = createFileRoute("/teacher")({
@@ -21,22 +21,50 @@ type Row = { id: string; nickname: string; score: number; records: RoundRecord[]
 
 function Teacher() {
   const [rows, setRows] = useState<Row[] | null>(null);
-  const load = async () => {
-    const { data } = await supabase.from("activity_results").select("*").order("created_at", { ascending: false });
-    setRows((data ?? []) as unknown as Row[]);
+  const [passcode, setPasscode] = useState("");
+  const [unlocked, setUnlocked] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const load = async (code = passcode) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await getTeacherResults({ data: { passcode: code } });
+      if (!res.ok) { setError("비밀번호가 맞지 않아요."); setUnlocked(false); return; }
+      setUnlocked(true);
+      setRows(res.rows as unknown as Row[]);
+    } catch {
+      setError("결과를 불러오지 못했어요. 잠시 뒤 다시 시도해주세요.");
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, []);
+
+  if (!unlocked) {
+    return (
+      <div className="mx-auto min-h-screen max-w-md px-4 py-10">
+        <h1 className="mb-4 text-2xl text-secondary-foreground">🧑‍🏫 선생님 페이지</h1>
+        <form onSubmit={(e) => { e.preventDefault(); if (passcode.trim()) load(); }} className="space-y-3">
+          <label className="block text-sm" htmlFor="teacher-passcode">선생님 비밀번호</label>
+          <input id="teacher-passcode" type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} className="w-full rounded-2xl border-2 border-border bg-card px-3 py-2" />
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <button type="submit" disabled={loading} className="rounded-2xl bg-primary px-4 py-2 text-primary-foreground">{loading ? "확인 중..." : "결과 보기"}</button>
+        </form>
+        <Link to="/" className="mt-6 inline-block text-sm underline">활동 화면</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto min-h-screen max-w-4xl px-4 py-6">
       <div className="mb-5 flex items-center justify-between">
         <h1 className="text-2xl text-secondary-foreground">🧑‍🏫 선생님 페이지</h1>
         <div className="flex gap-3 text-sm">
-          <button type="button" onClick={load} className="underline">새로고침</button>
+          <button type="button" onClick={() => load()} className="underline">새로고침</button>
           <Link to="/" className="underline">활동 화면</Link>
         </div>
       </div>
-      {rows === null && <p>불러오는 중...</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {rows?.length === 0 && <p className="text-muted-foreground">아직 활동을 마친 학생이 없어요.</p>}
       <div className="space-y-4">
         {rows?.map((r) => (
