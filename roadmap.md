@@ -1,3 +1,3 @@
-- [ ] Add spoken dialogue hints for every method in each situation at step 3.
-- [ ] Apply the requested non-answer feedback and strengthen contextual emotion checks.
-- [ ] Run regression tests and verify hints and validation in the activity.
+- [x] Add spoken dialogue hints for every method in each situation at step 3.
+- [x] Apply the requested non-answer feedback and strengthen contextual emotion checks.
+- [x] Run regression tests and verify hints and validation in the activity.

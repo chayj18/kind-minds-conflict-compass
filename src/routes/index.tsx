@@ -390,7 +390,7 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
                   variant="outline"
                   aria-pressed={on}
                   onClick={() => togglePick(s.id)}
-                  className={`h-full min-w-0 flex-col items-stretch justify-start gap-1 whitespace-normal rounded-2xl border-2 p-3 text-left transition ${on ? "border-primary bg-secondary" : "border-border bg-background"}`}
+                  className={`h-full min-w-0 flex-col items-stretch justify-start gap-1 whitespace-normal rounded-2xl border-2 p-3 text-left text-foreground transition hover:text-foreground ${on ? "border-primary bg-secondary hover:bg-secondary" : "border-border bg-background hover:bg-muted"}`}
                 >
                   <div className="font-display">{s.emoji} {s.name} {on && "✔"}</div>
                   <div className="font-sans text-xs text-muted-foreground">{s.desc}</div>
