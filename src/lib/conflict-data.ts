@@ -117,6 +117,7 @@ export type RoundRecord = {
   candidates: { id: string; name: string; scores: number[] }[];
   finalId: string;
   finalName: string;
+  hintsUsed?: number;
 };
 
 export const solutionById = (id: string) => SOLUTIONS.find((s) => s.id === id)!;

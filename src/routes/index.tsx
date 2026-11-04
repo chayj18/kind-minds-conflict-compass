@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { validateAnswers } from "@/lib/answer-validation.functions";
 import { simpleAnswerHelp, type AnswerResult } from "@/lib/answer-validation";
 import { SOLUTION_HINTS } from "@/lib/solution-hints";
+import { HINT_PENALTY, ROUNDS_TO_FINISH, STEP_HINTS, roundPoints, type StepHints } from "@/lib/step-hints";
 import {
   SITUATIONS,
   SOLUTIONS,
   CRITERIA,
   GOAL,
-  POINTS_PER_ROUND,
   isGoodChoice,
   solutionById,
   type RoundRecord,
@@ -64,12 +64,12 @@ function Index() {
   };
 
   const finishRound = async (rec: RoundRecord) => {
-    const newScore = score + POINTS_PER_ROUND;
+    const newScore = score + roundPoints(rec.hintsUsed ?? 0);
     const newRecords = [...records, rec];
     setScore(newScore);
     setRecords(newRecords);
     window.scrollTo(0, 0);
-    if (newScore >= GOAL) {
+    if (newRecords.length >= ROUNDS_TO_FINISH) {
       localStorage.setItem("cl-last-score", String(newScore));
       setPhase("done");
       await supabase.from("activity_results").insert({
@@ -105,7 +105,21 @@ function Index() {
         />
       )}
       {phase === "done" && (
-        <Summary nickname={nickname} records={records} onRestart={() => setPhase("intro")} />
+        <Summary nickname={nickname} score={score} records={records} onRestart={() => setPhase("intro")} />
+      )}
+    </div>
+  );
+}
+
+function HintBox({ label, hints, level, onReveal }: { label: string; hints: [string, string]; level: number; onReveal: () => void }) {
+  return (
+    <div className="space-y-2 rounded-2xl border-2 border-dashed border-border p-3">
+      {level > 0 && <p className="rounded-xl bg-warning-soft p-2 text-sm">💡 {hints[0]}</p>}
+      {level > 1 && <p className="rounded-xl bg-warning-soft p-2 text-sm">🔎 {hints[1]}</p>}
+      {level < 2 && (
+        <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={onReveal} aria-label={`${label} ${level === 0 ? "도움말 보기" : "도움말 더 보기"}`}>
+          {level === 0 ? "💡 도움말 보기" : "🔎 도움말 더 보기"} <span className="text-muted-foreground">(-{HINT_PENALTY}점)</span>
+        </Button>
       )}
     </div>
   );
@@ -244,6 +258,10 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
   const [checking, setChecking] = useState(false);
   const [answerHelp, setAnswerHelp] = useState<AnswerResult | null>(null);
   const [checkError, setCheckError] = useState("");
+  const hints = STEP_HINTS[situation.id] ?? STEP_HINTS["phone"]!;
+  const [hintLevel, setHintLevel] = useState<Record<keyof StepHints, number>>({ myNeed: 0, otherNeed: 0, solution: 0 });
+  const hintsUsed = hintLevel.myNeed + hintLevel.otherNeed + hintLevel.solution;
+  const reveal = (k: keyof StepHints) => setHintLevel((h) => ({ ...h, [k]: Math.min(2, h[k] + 1) }));
   const missingFeelings = !myFeeling.trim() || !otherFeeling.trim();
   const missingNeeds = !myNeed.trim() || !otherNeed.trim();
 
@@ -292,7 +310,9 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
     if (!finalId) return;
     const sol = solutionById(finalId);
     if (isGoodChoice(situation, finalId)) {
-      setFeedback({ ok: true, msg: `멋져요! "${sol.name}"은(는) 이 상황에서 두 사람 모두를 생각한 좋은 방법이에요. +${POINTS_PER_ROUND}점!` });
+      const pts = roundPoints(hintsUsed);
+      const note = hintsUsed > 0 ? ` (도움말 ${hintsUsed}번 사용)` : "";
+      setFeedback({ ok: true, msg: `멋져요! "${sol.name}"은(는) 이 상황에서 두 사람 모두를 생각한 좋은 방법이에요. +${pts}점!${note}` });
     } else {
       const extra = finalId === "apologize"
         ? "사과는 내가 잘못했을 때 꼭 필요한 방법이지만, 이 상황에는 사과만으로 해결되지 않아요. "
@@ -313,6 +333,7 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
       candidates: picked.map((id) => ({ id, name: solutionById(id).name, scores: scores[id] ?? [0, 0, 0] })),
       finalId,
       finalName: solutionById(finalId).name,
+      hintsUsed,
     });
   };
 
@@ -350,7 +371,9 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
           <h3 className="text-lg text-secondary-foreground">2단계 · 원했던 것(욕구) 찾기 🎯</h3>
           <p className="text-sm text-muted-foreground">감정 뒤에는 "이렇게 되었으면 좋겠다"는 마음이 숨어 있어요. 이미 일어난 일이니, 그때 무엇을 원했는지 떠올려 보세요.</p>
           <TextArea label="내가 원했던 것" value={myNeed} onChange={setMyNeed} placeholder="나는 ~하기를 바랐어요/상대방이 ~를 알아주기를 바랐어요/~하고 싶었어요" disabled={checking} error={attemptedStep === 2 && (!myNeed.trim() || !!answerHelp?.mineHelp)} />
+          <HintBox label="내가 원했던 것" hints={hints.myNeed} level={hintLevel.myNeed} onReveal={() => reveal("myNeed")} />
           <TextArea label={`${iga(situation.other)} 원했던 것`} value={otherNeed} onChange={setOtherNeed} placeholder={`${eunneun(situation.other)} ~를 바랐을 거예요/내가 ~하기를 바랐을 거예요/~하고 싶었을 거예요`} disabled={checking} error={attemptedStep === 2 && (!otherNeed.trim() || !!answerHelp?.otherHelp)} />
+          <HintBox label={`${iga(situation.other)} 원했던 것`} hints={hints.otherNeed} level={hintLevel.otherNeed} onReveal={() => reveal("otherNeed")} />
           <p className="rounded-2xl bg-muted p-3 text-sm text-muted-foreground">💭 {eunneun(situation.other)} 왜 그렇게 행동했을까요? {situation.other}의 속마음을 추측해보아요.</p>
           {attemptedStep === 2 && missingNeeds && <p role="alert" className="rounded-2xl bg-warning-soft p-3 text-sm">빈칸에 나와 {iga(situation.other)} 원했던 것을 모두 적어주세요.</p>}
           <AnswerHelp help={answerHelp} error={checkError} otherLabel={`${iga(situation.other)} 원했던 것`} myLabel="내가 원했던 것" />
@@ -380,6 +403,7 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
             </div>
           </section>
           <p className="text-sm text-muted-foreground">해결 방안 도감에서 후보 3가지를 골라주세요. ({picked.length}/3)</p>
+          <HintBox label="해결 방안 고르기" hints={hints.solution} level={hintLevel.solution} onReveal={() => reveal("solution")} />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SOLUTIONS.map((s) => {
               const on = picked.includes(s.id);
@@ -510,13 +534,13 @@ function AnswerHelp({ help, error, myLabel, otherLabel }: { help: AnswerResult |
   </div>;
 }
 
-function Summary({ nickname, records, onRestart }: { nickname: string; records: RoundRecord[]; onRestart: () => void }) {
+function Summary({ nickname, score, records, onRestart }: { nickname: string; score: number; records: RoundRecord[]; onRestart: () => void }) {
   return (
     <div className="space-y-5">
       <Card className="text-center">
         <p className="text-5xl">🏅</p>
         <h2 className="mt-2 text-2xl text-primary">{nickname} 연구원, 연구 완료!</h2>
-        <p className="mt-1 font-display text-4xl">{GOAL}점</p>
+        <p className="mt-1 font-display text-4xl">{score}점</p>
       </Card>
 
       <Card>
