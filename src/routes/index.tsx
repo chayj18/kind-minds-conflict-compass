@@ -11,7 +11,6 @@ import {
   SOLUTIONS,
   CRITERIA,
   GOAL,
-  POINTS_PER_ROUND,
   isGoodChoice,
   solutionById,
   type RoundRecord,
@@ -106,7 +105,7 @@ function Index() {
         />
       )}
       {phase === "done" && (
-        <Summary nickname={nickname} records={records} onRestart={() => setPhase("intro")} />
+        <Summary nickname={nickname} score={score} records={records} onRestart={() => setPhase("intro")} />
       )}
     </div>
   );
@@ -535,13 +534,13 @@ function AnswerHelp({ help, error, myLabel, otherLabel }: { help: AnswerResult |
   </div>;
 }
 
-function Summary({ nickname, records, onRestart }: { nickname: string; records: RoundRecord[]; onRestart: () => void }) {
+function Summary({ nickname, score, records, onRestart }: { nickname: string; score: number; records: RoundRecord[]; onRestart: () => void }) {
   return (
     <div className="space-y-5">
       <Card className="text-center">
         <p className="text-5xl">🏅</p>
         <h2 className="mt-2 text-2xl text-primary">{nickname} 연구원, 연구 완료!</h2>
-        <p className="mt-1 font-display text-4xl">{GOAL}점</p>
+        <p className="mt-1 font-display text-4xl">{score}점</p>
       </Card>
 
       <Card>
