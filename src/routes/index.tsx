@@ -334,6 +334,7 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
       candidates: picked.map((id) => ({ id, name: solutionById(id).name, scores: scores[id] ?? [0, 0, 0] })),
       finalId,
       finalName: solutionById(finalId).name,
+      hintsUsed,
     });
   };
 
