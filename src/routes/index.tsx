@@ -258,7 +258,7 @@ export function Round({ situation, round, onDone }: { situation: Situation; roun
   const [checking, setChecking] = useState(false);
   const [answerHelp, setAnswerHelp] = useState<AnswerResult | null>(null);
   const [checkError, setCheckError] = useState("");
-  const hints = STEP_HINTS[situation.id] ?? STEP_HINTS.phone!;
+  const hints = STEP_HINTS[situation.id] ?? STEP_HINTS["phone"]!;
   const [hintLevel, setHintLevel] = useState<Record<keyof StepHints, number>>({ myNeed: 0, otherNeed: 0, solution: 0 });
   const hintsUsed = hintLevel.myNeed + hintLevel.otherNeed + hintLevel.solution;
   const reveal = (k: keyof StepHints) => setHintLevel((h) => ({ ...h, [k]: Math.min(2, h[k] + 1) }));
